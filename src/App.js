@@ -3,6 +3,7 @@ import Navbar from './Navbar';
 import JobSelection from './JobSelection';
 import QuestionUpload from './QuestionUpload';
 import FeedbackResult from './FeedbackResult';
+import LoadingSpinner from "./LoadingSpinner";
 
 function App() {
   const [page, setPage] = useState("jobSelection");
@@ -17,12 +18,18 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/get-question?job=${job}`);
+      const response = await fetch(`/main`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ job: job }),
+      });
       if (!response.ok) {
         throw new Error("질문을 불러오지 못했습니다.");
       }
       const data = await response.json();
-      setQuestion(data.question);
+      setQuestion(data.question); // 질문을 상태에 저장
     } catch (err) {
       console.error(err);
       setError(err.message);
@@ -41,9 +48,23 @@ function App() {
     setQuestion(newQuestion); // 서버에서 받은 질문 저장
   };
 
-  const handleFileUpload = (feedbackData) => {
-    setFeedback(feedbackData);
-    setPage("feedbackResult");
+  // const handleFileUpload = (feedbackData) => {
+  //   setFeedback(feedbackData);
+  //   setPage("feedbackResult");
+  // };
+  const handleFileUpload = async (feedbackData) => {
+    setLoading(true); // 로딩 시작
+    try {
+      // 실제 서버 호출 없이 더미 데이터 설정하기
+      setTimeout(() => {
+        setFeedback(feedbackData);
+        setPage("feedbackResult");
+        setLoading(false);
+      }, 1000); // 3초 후에 피드백 페이지로 넘어가기
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("파일 업로드 중 오류가 발생했습니다.");
+    }
   };
 
   const handleNavigateHome = () => {
@@ -51,34 +72,84 @@ function App() {
     setSelectedJob(null);
     setFeedback(null);
   };
+
+  const handleNavigateTailQuestion = () => {
+    setPage("tailQuestion");
+  };
+
+  const handleNavigateDetailedEvaluation = () => {
+    alert("상세 평가 기준 페이지로 이동합니다");
+    // 상세 평가 페이지 추가하기
+  };
+
   const API_BASE_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
   
   return (
+    
     <div className="App">
-      <Navbar onNavigateHome={handleNavigateHome} />
-      {page === "jobSelection" && (
+      <Navbar/>
+      {loading && page !== "jobSelection" && <LoadingSpinner />}
+      {!loading && page === "jobSelection" && (
         <JobSelection 
           onJobSelect={handleJobSelect} 
           onQuestionUpdate={handleQuestionUpdate} 
         />
       )}
-      {page === "questionUpload" && (
-        <QuestionUpload 
+      {!loading && page === "questionUpload" && (
+        <QuestionUpload
           selectedJob={selectedJob} 
           question={question} 
           onFileUpload={handleFileUpload}
           onPageChange={setPage} // 페이지 변경 함수 전달
           apiUrl={API_BASE_URL} // 전달 
+          setLoading={setLoading} // pass setLoading as a prop
         />
       )}
-      {page === "feedbackResult" && (
+      {!loading && page === "feedbackResult" && feedback && (
         <FeedbackResult
-          Question={question}
           feedback={feedback}
+          Question={question}
+          onTailQuestion={handleNavigateTailQuestion}
+          onDetailedEvaluation={handleNavigateDetailedEvaluation}
+        />
+      )}
+      {!loading && page === "tailQuestion" && (
+        <QuestionUpload
+          selectedJob={selectedJob}
+          onFileUpload={handleFileUpload}
         />
       )}
     </div>
   );
 }
+
+
+//   return (
+//     <div className="App">
+//       <Navbar onNavigateHome={handleNavigateHome} />
+//       {page === "jobSelection" && (
+//         <JobSelection 
+//           onJobSelect={handleJobSelect} 
+//           onQuestionUpdate={handleQuestionUpdate} 
+//         />
+//       )}
+//       {page === "questionUpload" && (
+//         <QuestionUpload 
+//           selectedJob={selectedJob} 
+//           question={question} 
+//           onFileUpload={handleFileUpload}
+//           onPageChange={setPage} // 페이지 변경 함수 전달
+//           apiUrl={API_BASE_URL} // 전달 
+//         />
+//       )}
+//       {page === "feedbackResult" && (
+//         <FeedbackResult
+//           Question={question}
+//           feedback={feedback}
+//         />
+//       )}
+//     </div>
+//   );
+// }
 
 export default App;

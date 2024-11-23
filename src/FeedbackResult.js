@@ -1,12 +1,20 @@
 import React from 'react';
 import './FeedbackResult.css';
 
-function FeedbackResult({ feedback: feedbackData, Question }) {
-  // feedback에서 필요한 값을 구조 분해 할당
-  console.log(feedbackData)
-  console.log(Object.keys(feedbackData.feedback)); // 확인용
-  console.log(feedbackData.feedback?.size)
-  //const feedbackData = JSON.parse(response.feedbackData);
+function FeedbackResult({ feedback: feedbackData, Question, onTailQuestion, onDetailedEvaluation}) {
+
+  const getStatusColor = (value, type) => {
+    if (value === "주의") return "#FF9800"; // 주의 - 주황색
+    if (value === "위험") return "#F44336"; // 위험 - 빨강색
+    if (type === "breakTime") {
+      const breakTimeValue = parseFloat(value);
+      if (breakTimeValue >= 20) return "#F44336"; // 위험 - 빨강색
+      if (breakTimeValue >= 10) return "#FF9800"; // 주의 - 주황색
+      return "#000000";
+    }
+    return "#000000";
+  };
+
   // 구조 분해 할당
   const {
     answer,
@@ -21,9 +29,9 @@ function FeedbackResult({ feedback: feedbackData, Question }) {
     analysis // 이 부분 구체화 해결 필요
   } = feedbackData.feedback;
   // 변수들을 배열로 변환
-  const variables = [speed, size, pronunciation, similarity, meaningless, break_time];
+  const variables = [speed, size, pronunciation, similarity, meaningless, break_time, analysis?.exp_feed, analysis?.str_feed, analysis?.con_feed];
 
-  // 조건을 처리하고 숫자를 더하기
+  // 감점 총합
   const total = variables.reduce((sum, value) => {
     if (value && value.length >= 3) {
       const lastCharAsNumber = Number(value.slice(-1)); // 마지막 문자를 숫자로 변환
@@ -32,7 +40,8 @@ function FeedbackResult({ feedback: feedbackData, Question }) {
     return sum; // 조건 미충족 시 0 추가
   }, 0);
 
-  const score  =100-(total+Number(analysis)+Number(emotion))// 점수 - 미완 
+  // 최종 점수
+  const score  =100-(total+Number(emotion))
 
   return (
     <div className="feedbackData-result">
@@ -52,22 +61,28 @@ function FeedbackResult({ feedback: feedbackData, Question }) {
             </div>
             <div className="status-details">
               <div>
-                <span>말의 속도</span> <strong className='speed'>{speed ? speed.slice(0, 2) : 'N/A'}</strong>
+                <span>말의 속도</span> 
+                <strong className='speed' style={{ color: getStatusColor(speed.slice(0, 2), "speed")}}> {speed ? speed.slice(0, 2) : 'N/A'}</strong>
               </div>
               <div>
-                <span>말의 크기</span> <strong className='size'>{size ? size.slice(0, 2) : 'N/A'}</strong>
+                <span>말의 크기</span> 
+                <strong className='size' style={{ color: getStatusColor(size.slice(0, 2), "size")}}> {size ? size.slice(0, 2) : 'N/A'}</strong>
               </div>
               <div>
-                <span>발음</span> <strong className='pronunciation'>{pronunciation ? pronunciation.slice(0,2) : 'N/A'}</strong>
+                <span>발음</span> 
+                <strong className='pronunciation' style={{ color: getStatusColor(pronunciation.slice(0, 2), "pronunciation")}}> {pronunciation ? pronunciation.slice(0,2) : 'N/A'}</strong>
               </div>
               <div>
-                <span>유사도</span> <strong className='similarity'>{similarity ? similarity.slice(0,2) : 'N/A'}</strong>
+                <span>유사도</span> 
+                <strong className='similarity' style={{ color: getStatusColor(similarity.slice(0, 2), "similarity")}}> {similarity ? similarity.slice(0,2) : 'N/A'}</strong>
               </div>
               <div>
-                <span>간투어</span> <strong className='meaningless'>{meaningless ? meaningless.slice(0,2) : 'N/A'}</strong>
+                <span>간투어</span> 
+                <strong className='meaningless' style={{ color: getStatusColor(meaningless.slice(0, 2), "meaningless")}}> {meaningless ? meaningless.slice(0,2) : 'N/A'}</strong>
               </div>
               <div>
-                <span>휴지</span> <strong className='break'>{break_time ? break_time.slice(0,2) : 'N/A'}</strong>
+                <span>휴지</span> 
+                <strong className='break' style={{ color: getStatusColor(break_time.slice(0, 2), "breakTime")}}> {break_time ? break_time.slice(0,2) : 'N/A'}</strong>
               </div>
             </div>
           </div>
@@ -99,13 +114,25 @@ function FeedbackResult({ feedback: feedbackData, Question }) {
           <p className="answer">{answer || '답변이 없습니다.'}</p>
           <h4>주요 피드백</h4>
           <div className="main-feedbackData">
-            <p>{speed && speed.length >= 3 ? speed.slice(3,-1) : null}</p>{/* 개선 조언 출력 */}
-            <p>{size && size.length >= 3 ? size.slice(3,-1) : null}</p>
-            <p>{break_time && break_time.length >= 3 ? break_time.slice(3,-1) : null}</p>
-            <p>{meaningless && meaningless.length >= 3 ? meaningless.slice(3,-1) : null}</p>
-            <p>{similarity && similarity.length >= 3 ? similarity.slice(3,-1) : null}</p>
-            <p>{pronunciation && pronunciation.length >= 3 ? pronunciation.slice(3,-1) : null}</p>
+            <p>- {analysis?.exp_feed.slice(0,-1)}</p>
+            <p>- {analysis?.str_feed.slice(0,-1)}</p>
+            <p>- {analysis?.con_feed.slice(0,-1)}</p>
+            <p>{speed && speed.length >= 3 ? '- '+speed.slice(3,-1) : null}</p>{/* 개선 조언 출력 */}
+            <p>{size && size.length >= 3 ? '- '+size.slice(3,-1) : null}</p>
+            <p>{break_time && break_time.length >= 3 ? '- '+break_time.slice(3,-1) : null}</p>
+            <p>{meaningless && meaningless.length >= 3 ? '- '+meaningless.slice(3,-1) : null}</p>
+            <p>{similarity && similarity.length >= 3 ? '- '+similarity.slice(3,-1) : null}</p>
+            <p>{pronunciation && pronunciation.length >= 3 ? '- '+pronunciation.slice(3,-1) : null}</p>
           </div>
+        </div>
+
+        <div className="navigation-buttons">
+          <button className="detailed-button" onClick={onDetailedEvaluation}>
+            상세 평가 기준 보기
+          </button>
+          <button className="tail-question-button" onClick={onTailQuestion}>
+            꼬리질문으로 이동
+          </button>
         </div>
       </div>
     </div>

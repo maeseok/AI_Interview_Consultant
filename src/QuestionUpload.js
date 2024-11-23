@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './QuestionUpload.css';
 
-function QuestionUpload({ selectedJob, question, onFileUpload, apiUrl, onPageChange}) {
+function QuestionUpload({ selectedJob, question, onFileUpload, apiUrl, onPageChange, setLoading}) {
   const [file, setFile] = useState(null);
   const [page, setPage] = useState("jobSelection");
 
@@ -15,7 +15,8 @@ function QuestionUpload({ selectedJob, question, onFileUpload, apiUrl, onPageCha
     //  onFileUpload(file);
     //}
     if (!file) return;
-
+    // 업로드 시작 시 로딩 상태를 true로 설정
+    setLoading(true);
     const formData = new FormData();
     formData.append('audio_file', file);
     formData.append('question', question);
@@ -28,16 +29,21 @@ function QuestionUpload({ selectedJob, question, onFileUpload, apiUrl, onPageCha
       console.log(apiUrl);
       if (response.ok) {
         const result = await response.json();
-        alert(`업로드 성공! 결과 페이지: ${result.redirect_url}`);
+        //alert(`업로드 성공! 결과 페이지: ${result.redirect_url}`);
         onFileUpload(result); // 피드백 데이터를 상위로 전달
         onPageChange("feedbackResult"); // 페이지 변경
         // window.location.href = result.redirect_url; // 결과 페이지로 리다이렉트
       } else {
+        const errorText = await response.text();
         alert('업로드 실패. 다시 시도해주세요.');
       }
     } catch (error) {
       console.error('Error uploading file:', error);
       alert('파일 업로드 중 문제가 발생했습니다.');
+    }
+    finally {
+    // 업로드 완료 후 로딩 상태를 false로 설정
+    setLoading(false);
     }
   };
 
