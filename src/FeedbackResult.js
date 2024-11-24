@@ -109,14 +109,14 @@ function FeedbackResult({ feedback: feedbackData, Question, onTailQuestion, onDe
 
         <div className="ai-question">
           <h4>질문</h4>
-          <p className="question">{Question || '질문이 없습니다.'}</p>
+          <p className="question">{Question}</p>
           <h4>사용자 답변</h4>
           <p className="answer">{answer || '답변이 없습니다.'}</p>
           <h4>주요 피드백</h4>
           <div className="main-feedbackData">
-            <p>- {analysis?.exp_feed.slice(0,-1)}</p>
-            <p>- {analysis?.str_feed.slice(0,-1)}</p>
-            <p>- {analysis?.con_feed.slice(0,-1)}</p>
+            <p>- {analysis?.exp_feed.trim().slice(0, -1)}</p>
+            <p>- {analysis?.str_feed.trim().slice(0, -1)}</p>
+            <p>- {analysis?.con_feed.trim().slice(0, -1)}</p>
             <p>{speed && speed.length >= 3 ? '- '+speed.slice(3,-1) : null}</p>{/* 개선 조언 출력 */}
             <p>{size && size.length >= 3 ? '- '+size.slice(3,-1) : null}</p>
             <p>{break_time && break_time.length >= 3 ? '- '+break_time.slice(3,-1) : null}</p>

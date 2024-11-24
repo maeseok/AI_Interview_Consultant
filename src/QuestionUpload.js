@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './QuestionUpload.css';
 
-function QuestionUpload({ selectedJob, question, onFileUpload, apiUrl, onPageChange, setLoading, questionType='질문'}) {
+function QuestionUpload({ selectedJob, question, onFileUpload, apiUrl, onPageChange, setLoading, Question, questionType='질문'}) {
   const [file, setFile] = useState(null);
   const [page, setPage] = useState("jobSelection");
 
@@ -39,7 +39,7 @@ function QuestionUpload({ selectedJob, question, onFileUpload, apiUrl, onPageCha
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      //alert('파일 업로드 중 문제가 발생했습니다.');
+      alert('파일 업로드 중 문제가 발생했습니다.');
     }
     finally {
     // 업로드 완료 후 로딩 상태를 false로 설정
@@ -50,7 +50,7 @@ function QuestionUpload({ selectedJob, question, onFileUpload, apiUrl, onPageCha
   return (
     <div className="question-upload">
       <h2>{selectedJob} 직군 질문</h2>
-      <p>{questionType}: "{question || '질문이 없습니다.'}"</p>
+      <p>{questionType}: "{Question}"</p>
       <label className="file-upload-label" htmlFor="file-upload">
         <br></br>
         {file ?  "🔊 답변 파일이 업로드 되었습니다 : "+file.name : "🔊 답변 파일을 업로드 해주세요."}

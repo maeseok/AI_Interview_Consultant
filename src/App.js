@@ -4,6 +4,7 @@ import JobSelection from './JobSelection';
 import QuestionUpload from './QuestionUpload';
 import FeedbackResult from './FeedbackResult';
 import LoadingSpinner from "./LoadingSpinner";
+import DetailedEvaluationModal from "./DetailedEvaluationModal";
 
 function App() {
   const [page, setPage] = useState("jobSelection");
@@ -13,6 +14,7 @@ function App() {
   const [tailQuestionData, setTailQuestionData] = useState(null);
   const [loading, setLoading] = useState(false); // 로딩 상태
   const [error, setError] = useState(null); // 에러 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 서버에서 질문 가져오기
   const fetchQuestion = async (job) => {
@@ -61,7 +63,7 @@ function App() {
         setFeedback(feedbackData);
         setPage("feedbackResult");
         setLoading(false);
-      }, 1000); // 3초 후에 피드백 페이지로 넘어가기
+      }, 50); // 3초 후에 피드백 페이지로 넘어가기
     } catch (error) {
       console.error("Error uploading file:", error);
       alert("파일 업로드 중 오류가 발생했습니다.");
@@ -79,12 +81,17 @@ function App() {
   };
 
   const handleNavigateDetailedEvaluation = () => {
-    alert("상세 평가 기준 페이지로 이동합니다");
-    // 상세 평가 페이지 추가하기
+    setIsModalOpen(true);
   };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+
 
   const handleTailQuestion = () => {
     setTailQuestionData(feedback.feedback?.generated_question);
+    setQuestion(feedback.feedback?.generated_question)
     setPage("tailQuestion");
   };
 
@@ -101,7 +108,8 @@ function App() {
   return (
     
     <div className="App">
-      <Navbar/>
+      {isModalOpen && <DetailedEvaluationModal onClose={closeModal} />}
+      {!isModalOpen && <Navbar />}
       {loading && page !== "jobSelection" && <LoadingSpinner />}
       {!loading && page === "jobSelection" && (
         <JobSelection 
@@ -112,7 +120,7 @@ function App() {
       {!loading && page === "questionUpload" && (
         <QuestionUpload
           selectedJob={selectedJob} 
-          question={question} 
+          questionContent={question} 
           onFileUpload={handleFileUpload}
           onPageChange={setPage} // 페이지 변경 함수 전달
           apiUrl={API_BASE_URL} // 전달 
@@ -122,18 +130,20 @@ function App() {
       {!loading && page === "feedbackResult" && feedback && (
         <FeedbackResult
           feedback={feedback}
-          Question={question}
+          questionContent={question}
           onTailQuestion={handleTailQuestion}
           onDetailedEvaluation={handleNavigateDetailedEvaluation}
           onEndQuestions={handleEndQuestions}
         />
+        
       )}
-      {!loading && page === "tailQuestion" && (
+      {!loading && page === "tailQuestion" && tailQuestionData && (
         <QuestionUpload
           selectedJob={selectedJob}
           onFileUpload={handleFileUpload}
           questionType="꼬리질문"
-          question={tailQuestionData}
+          onPageChange={setPage} // 페이지 변경 함수 전달
+          Question={tailQuestionData}
           apiUrl={API_BASE_URL} // 전달 
           setLoading={setLoading} // pass setLoading as a prop
         />
