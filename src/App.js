@@ -10,6 +10,7 @@ function App() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [question, setQuestion] = useState(''); // 서버에서 받은 질문
   const [feedback, setFeedback] = useState(null);
+  const [tailQuestionData, setTailQuestionData] = useState(null);
   const [loading, setLoading] = useState(false); // 로딩 상태
   const [error, setError] = useState(null); // 에러 상태
 
@@ -82,6 +83,19 @@ function App() {
     // 상세 평가 페이지 추가하기
   };
 
+  const handleTailQuestion = () => {
+    setTailQuestionData(feedback.feedback?.generated_question);
+    setPage("tailQuestion");
+  };
+
+  const handleEndQuestions = () => {
+    alert("모든 질문을 종료합니다. 감사합니다!");
+    setPage("jobSelection");
+    setSelectedJob(null);
+    setFeedback(null);
+    setTailQuestionData(null);
+  };
+
   const API_BASE_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
   
   return (
@@ -109,14 +123,19 @@ function App() {
         <FeedbackResult
           feedback={feedback}
           Question={question}
-          onTailQuestion={handleNavigateTailQuestion}
+          onTailQuestion={handleTailQuestion}
           onDetailedEvaluation={handleNavigateDetailedEvaluation}
+          onEndQuestions={handleEndQuestions}
         />
       )}
       {!loading && page === "tailQuestion" && (
         <QuestionUpload
           selectedJob={selectedJob}
           onFileUpload={handleFileUpload}
+          questionType="꼬리질문"
+          question={tailQuestionData}
+          apiUrl={API_BASE_URL} // 전달 
+          setLoading={setLoading} // pass setLoading as a prop
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import './FeedbackResult.css';
 
-function FeedbackResult({ feedback: feedbackData, Question, onTailQuestion, onDetailedEvaluation}) {
+function FeedbackResult({ feedback: feedbackData, Question, onTailQuestion, onDetailedEvaluation, onEndQuestions }) {
 
   const getStatusColor = (value, type) => {
     if (value === "주의") return "#FF9800"; // 주의 - 주황색
@@ -127,11 +127,14 @@ function FeedbackResult({ feedback: feedbackData, Question, onTailQuestion, onDe
         </div>
 
         <div className="navigation-buttons">
-          <button className="detailed-button" onClick={onDetailedEvaluation}>
+        <button className="detailed-button" onClick={onDetailedEvaluation}>
             상세 평가 기준 보기
           </button>
           <button className="tail-question-button" onClick={onTailQuestion}>
             꼬리질문으로 이동
+          </button>
+          <button className="end-questions-button" onClick={onEndQuestions}>
+            질문 종료
           </button>
         </div>
       </div>
