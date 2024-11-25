@@ -55,8 +55,8 @@ def main():
     else:
         subcategory = data.get("subcategory")
         question = random.choice(df[subcategory].dropna().tolist())
-    question= "학생들이 쉽게 이해할 수 있도록 프로그래밍 개념을 설명하는 방법은 무엇인가요?"
-    print(question)
+    #question= "학생들이 쉽게 이해할 수 있도록 프로그래밍 개념을 설명하는 방법은 무엇인가요?"
+    #print(question)
     return jsonify({"question": question})  # 질문을 JSON으로 반환
 
 # 파일 업로드 페이지
