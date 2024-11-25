@@ -6,7 +6,6 @@ import pandas as pd
 from IPython.display import Audio
 import soundfile as sf
 import noisereduce as nr
-#import whisper_timestamped as whisper_t
 from konlpy.tag import Okt, Komoran
 import warnings
 from langchain.chat_models import ChatOpenAI
@@ -21,7 +20,7 @@ from google.oauth2 import service_account
 from google.cloud import speech
 import io
 import openai
-#from kss import split_sentences
+
 
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain")
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -35,8 +34,6 @@ result={}
 
 file_path = './직무별_면접_질문_리스트_한글변환.xlsx'
 df = pd.read_excel(file_path, sheet_name='Sheet1')
-
-#model = whisper_t.load_model("base")  # 모델 로드
 
 
 # 산업과 직무 매핑
@@ -97,14 +94,6 @@ def preprocess_audio(file_path):
         print(f"전처리전 오디오 파일 저장 중 오류 발생: {e}")
     return y, audio_data, sr, librosa.get_duration(y=audio_data, sr=sr)  # 추가된 부분
 
-# whisper로 음성을 텍스트로 변환하는 함수
-# def transcribe(audio_data):
-#     audio_data = whisper_t.pad_or_trim(audio_data)
-#     result = whisper_t.transcribe(model, audio_data, language="ko")
-#     #print(f"Detected language: {result['language']}")
-#     return result["text"], result["segments"]
-
-# whisper로 음성을 텍스트로 변환하는 함수
 # 음성 파일을 비동기 방식으로 STT 변환하는 함수
 def transcribe(audio_file):
     client = speech.SpeechClient(credentials=credentials)  # credentials 직접 사용
@@ -168,19 +157,6 @@ def transcribe(audio_file):
                     sentence_words = []
                     sentence_start_time = None
 
-            # # 문장의 끝을 KSS로 판단
-            # if word.endswith((".", "?", "!", "다", "요", "입니다", "어요", "니까", '어')):  # 문장 끝 구분 기준
-            #     sentence_text = " ".join(sentence_words)
-            #     segments.append({
-            #         "text": sentence_text,
-            #         "start_time": sentence_start_time,
-            #         "end_time": end_time
-            #     })
-            #     # 문장 정보 초기화
-            #     sentence_words = []
-            #     sentence_start_time = None
-
-
     return text, segments
 
 
@@ -241,8 +217,6 @@ def find_silence(audio_data, sr):
     return total_audio_time, long_silences, silence_percentage
 
 def silence_feedback(total_silence_time, total_audio_time, silence_percentage, long_silence_exists):
-    #feedback = []
-
     # 무음 비율 기준
     if silence_percentage < 10:
         if not long_silence_exists:
@@ -265,9 +239,6 @@ def silence_feedback(total_silence_time, total_audio_time, silence_percentage, l
         else:
             result['break_time']=(f"위험 녹음 시간인 {total_audio_time} 초 동안, 휴지 구간이 잦고, 긴 무음 구간이 발견되었습니다. 유창한 답변을 위해 많은 연습이 필요합니다.7")
 
-    #return feedback
-
-# 간투어 리스트 정의
 
 # 간투어 탐지 함수
 def detect_filler_words(transcribed_text):
@@ -294,22 +265,21 @@ def noise_feedback(filler_count):
     
 # 답변 유사도 측정
 def similarity_feedback(question, answer):
-    # 질문-답변 유사도 측정 모델 설정 - 속도를 위해 일단 스킵
-    # model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+    #질문-답변 유사도 측정 모델 설정
+    model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
-    # # 질문과 답변의 유사도 측정
-    # question_embedding = model.encode(question, convert_to_tensor=True)
-    # answer_embedding = model.encode(answer, convert_to_tensor=True)
+    # 질문과 답변의 유사도 측정
+    question_embedding = model.encode(question, convert_to_tensor=True)
+    answer_embedding = model.encode(answer, convert_to_tensor=True)
 
-    # similarity = util.pytorch_cos_sim(question_embedding, answer_embedding)
-    # similarity_score = similarity.item()
-    # print(similarity_score)
+    similarity = util.pytorch_cos_sim(question_embedding, answer_embedding)
+    similarity_score = similarity.item()
+    print(similarity_score)
 
-    # if similarity_score < 0.5:
-    #     result['similarity'] = "낮음 질문과 답변의 의미적 일치가 부족합니다.5"
-    # else:
-    #     result['similarity'] = "높음"
-    result['similarity'] = "높음"
+    if similarity_score < 0.5:
+        result['similarity'] = "낮음 질문과 답변의 의미적 일치가 부족합니다.5"
+    else:
+        result['similarity'] = "높음"
     
 # 꼬리질문 생성 
 def process_text_with_langchain(transcription):
@@ -538,157 +508,146 @@ def analyze_audio(file_path, question):
     corrected_text, generated_question = process_text_with_langchain(text)
     accuracy_score = pronunciation_accuracy(text, corrected_text)
     feedback = pronunciation_feedback(accuracy_score)
-    #print(feedback)
 
     # 침묵 피드백
     total_audio_time, long_silences, silence_percentage = find_silence(y, sr)
     long_silence_exists = len(long_silences) > 0
     silence_feedback_result = silence_feedback(total_audio_time, total_audio_time, silence_percentage, long_silence_exists)
-    #print(silence_feedback_result[0])
 
     # 간투어 피드백
     filler_count = detect_filler_words(text)
     feedback = noise_feedback(filler_count)
-    #print(feedback)
-    
+
     # 유사도 피드백 - 이 부분은 텍스트 피드백
     sil_feedback = similarity_feedback(question, corrected_text)
-    #print(sil_feedback)
 
-    # 꼬리질문 질문생성
-    #print('추가 질문 :', generated_question)
 
     return result
 
+import torch
+import torch.nn as nn
+import pytorch_lightning as pl
+from transformers import AutoModel, AutoModelForSequenceClassification, AutoTokenizer, AutoFeatureExtractor, HubertForSequenceClassification, AutoConfig
+from transformers.optimization import AdamW, get_constant_schedule_with_warmup
+from torch.utils.data import Dataset, DataLoader
 
-
-
-#################### 감정분석 부분
-
-# import torch
-# import torch.nn as nn
-# import pytorch_lightning as pl
-# from transformers import AutoModel, AutoModelForSequenceClassification, AutoTokenizer, AutoFeatureExtractor, HubertForSequenceClassification, AutoConfig
-# from transformers.optimization import AdamW, get_constant_schedule_with_warmup
-# from torch.utils.data import Dataset, DataLoader
-
-# class MyLitModel(pl.LightningModule):
-#     def __init__(self, num_labels, n_layers=1, projector=True, classifier=True, dropout=0.2, lr_decay=1, fold_idx=0):
-#         super(MyLitModel, self).__init__()
-#         self.audio_model = AutoModel.from_pretrained('team-lucid/hubert-base-korean')
+class MyLitModel(pl.LightningModule):
+    def __init__(self, num_labels, n_layers=1, projector=True, classifier=True, dropout=0.2, lr_decay=1, fold_idx=0):
+        super(MyLitModel, self).__init__()
+        self.audio_model = AutoModel.from_pretrained('team-lucid/hubert-base-korean')
         
-#         # Transformer 추가
-#         self.transformer = nn.TransformerEncoder(
-#             nn.TransformerEncoderLayer(
-#                 d_model=self.audio_model.config.hidden_size,
-#                 nhead=4,
-#                 dim_feedforward=512,
-#                 dropout=dropout,
-#                 activation='gelu'
-#             ),
-#             num_layers=1
-#         )
+        # Transformer 추가
+        self.transformer = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=self.audio_model.config.hidden_size,
+                nhead=4,
+                dim_feedforward=512,
+                dropout=dropout,
+                activation='gelu'
+            ),
+            num_layers=1
+        )
         
-#         # 분류기 추가
-#         self.classifier = nn.Linear(self.audio_model.config.hidden_size, num_labels)
-#         self.dropout = nn.Dropout(dropout)
+        # 분류기 추가
+        self.classifier = nn.Linear(self.audio_model.config.hidden_size, num_labels)
+        self.dropout = nn.Dropout(dropout)
         
         
-#     def forward(self, audio_values, audio_attn_mask):
-#         # Hubert에서 특성 추출
-#         output = self.audio_model(input_values=audio_values, attention_mask=audio_attn_mask)
-#         hidden_states = output.last_hidden_state  # (batch_size, seq_len, hidden_size)
-#         # Transformer에 입력
-#         hidden_states = hidden_states.permute(1, 0, 2)  # Transformer 입력 형식: (seq_len, batch_size, hidden_size)
-#         transformer_out = self.transformer(hidden_states)  # (seq_len, batch_size, hidden_size)
-#         transformer_out = transformer_out.permute(1, 0, 2)  # 다시 원래 형식으로 변경: (batch_size, seq_len, hidden_size)
+    def forward(self, audio_values, audio_attn_mask):
+        # Hubert에서 특성 추출
+        output = self.audio_model(input_values=audio_values, attention_mask=audio_attn_mask)
+        hidden_states = output.last_hidden_state  # (batch_size, seq_len, hidden_size)
+        # Transformer에 입력
+        hidden_states = hidden_states.permute(1, 0, 2)  # Transformer 입력 형식: (seq_len, batch_size, hidden_size)
+        transformer_out = self.transformer(hidden_states)  # (seq_len, batch_size, hidden_size)
+        transformer_out = transformer_out.permute(1, 0, 2)  # 다시 원래 형식으로 변경: (batch_size, seq_len, hidden_size)
 
-#         # 마지막 타임스텝의 출력만 사용하거나 평균 풀링
-#         pooled_out = transformer_out.mean(dim=1)  # (batch_size, hidden_size)
+        # 마지막 타임스텝의 출력만 사용하거나 평균 풀링
+        pooled_out = transformer_out.mean(dim=1)  # (batch_size, hidden_size)
         
-#         # 분류기 통과
-#         logits = self.classifier(self.dropout(pooled_out))  # (batch_size, num_labels)
-#         return logits
+        # 분류기 통과
+        logits = self.classifier(self.dropout(pooled_out))  # (batch_size, num_labels)
+        return logits
 
-#     def predict_step(self, batch, batch_idx, dataloader_idx=None):
-#         audio_values = batch['audio_values']
-#         audio_attn_mask = batch['audio_attn_mask']
-#         # 최종 예측값 
-#         logits = self(audio_values, audio_attn_mask)
-#         preds = torch.round(torch.sigmoid(logits.view(-1)))
+    def predict_step(self, batch, batch_idx, dataloader_idx=None):
+        audio_values = batch['audio_values']
+        audio_attn_mask = batch['audio_attn_mask']
+        # 최종 예측값 
+        logits = self(audio_values, audio_attn_mask)
+        preds = torch.round(torch.sigmoid(logits.view(-1)))
 
-#         return preds
+        return preds
 
-# class MyDataset(Dataset):
-#     def __init__(self, audio, audio_feature_extractor, label=None):
-#         self.label = np.array(label if label is not None else [0] * len(audio)).astype(np.int64)
-#         self.audio = audio
-#         # 오디오 데이터를 모델이 이해할 수 있는 형태로 변환
-#         self.audio_feature_extractor = audio_feature_extractor
+class MyDataset(Dataset):
+    def __init__(self, audio, audio_feature_extractor, label=None):
+        self.label = np.array(label if label is not None else [0] * len(audio)).astype(np.int64)
+        self.audio = audio
+        # 오디오 데이터를 모델이 이해할 수 있는 형태로 변환
+        self.audio_feature_extractor = audio_feature_extractor
 
-#         # 하나의 오디오 파일만 주어질 경우 리스트로 변환
-#         if isinstance(self.audio, str):
-#             self.audio = [self.audio]
-#             self.label = [self.label]  # 하나의 레이블만 처리
-#     def __len__(self):
-#         return len(self.label)
+        # 하나의 오디오 파일만 주어질 경우 리스트로 변환
+        if isinstance(self.audio, str):
+            self.audio = [self.audio]
+            self.label = [self.label]  # 하나의 레이블만 처리
+    def __len__(self):
+        return len(self.label)
 
-#     def __getitem__(self, idx):
-#         label = self.label[idx]
-#         audio = self.audio[idx]
-#         audio_feature = self.audio_feature_extractor(raw_speech=audio, return_tensors='np', sampling_rate=16000)
-#         audio_values, audio_attn_mask = audio_feature['input_values'][0], audio_feature['attention_mask'][0]
+    def __getitem__(self, idx):
+        label = self.label[idx]
+        audio = self.audio[idx]
+        audio_feature = self.audio_feature_extractor(raw_speech=audio, return_tensors='np', sampling_rate=16000)
+        audio_values, audio_attn_mask = audio_feature['input_values'][0], audio_feature['attention_mask'][0]
 
-#         item = {
-#             'label':label,
-#             'audio_values':audio_values,
-#             'audio_attn_mask':audio_attn_mask,
-#         }
+        item = {
+            'label':label,
+            'audio_values':audio_values,
+            'audio_attn_mask':audio_attn_mask,
+        }
 
-#         return item
+        return item
 
-# from torch.nn.utils.rnn import pad_sequence
+from torch.nn.utils.rnn import pad_sequence
 
-# def collate_fn(samples):
-#     batch_labels = [sample['label'] for sample in samples]
-#     batch_audio_values = [torch.tensor(sample['audio_values']) for sample in samples]
-#     batch_audio_attn_masks = [torch.tensor(sample['audio_attn_mask']) for sample in samples]
+def collate_fn(samples):
+    batch_labels = [sample['label'] for sample in samples]
+    batch_audio_values = [torch.tensor(sample['audio_values']) for sample in samples]
+    batch_audio_attn_masks = [torch.tensor(sample['audio_attn_mask']) for sample in samples]
 
-#     batch = {
-#         'label': torch.tensor(batch_labels),
-#         'audio_values': pad_sequence(batch_audio_values, batch_first=True),
-#         'audio_attn_mask': pad_sequence(batch_audio_attn_masks, batch_first=True),
-#     }
+    batch = {
+        'label': torch.tensor(batch_labels),
+        'audio_values': pad_sequence(batch_audio_values, batch_first=True),
+        'audio_attn_mask': pad_sequence(batch_audio_attn_masks, batch_first=True),
+    }
 
-#     return batch
+    return batch
 
-# def analyze_emotion(file_path):
-#     trainer = pl.Trainer(
-#     accelerator='cpu', 
-#     precision=16,
-#     )
+def analyze_emotion(file_path):
+    trainer = pl.Trainer(
+    accelerator='cpu', 
+    precision=16,
+    )
 
-#     # 원하는 모델 경로를 지정 (하나의 모델만 사용)
-#     pretrained_model_path = './emotion_model.ckpt'  # 예시 모델 경로
+    # 원하는 모델 경로를 지정 (하나의 모델만 사용)
+    pretrained_model_path = './emotion_model.ckpt'  # 예시 모델 경로
 
-#     # 모델 로드
-#     pretrained_model = MyLitModel.load_from_checkpoint(
-#         pretrained_model_path,
-#         num_labels=1,
-#     )
-#     pretrained_model.eval()
-#     audio_feature_extractor = AutoFeatureExtractor.from_pretrained('team-lucid/hubert-base-korean')
-#     audio_feature_extractor.return_attention_mask=True
-#     test_audios,_=librosa.load(file_path, sr=16000)
-#     test_ds = MyDataset([test_audios], audio_feature_extractor)
-#     # 데이터셋 로드해 배치 단위로 처리
-#     test_dl = DataLoader(test_ds, batch_size=16, collate_fn=collate_fn)
-#     # 예측 수행
-#     final_pred = trainer.predict(pretrained_model, test_dl)
-#     if final_pred[0].item()==1:
-#         result['emotion']='5' #fear
-#     else:
-#         result['emotion']='0' #not fear
+    # 모델 로드
+    pretrained_model = MyLitModel.load_from_checkpoint(
+        pretrained_model_path,
+        num_labels=1,
+    )
+    pretrained_model.eval()
+    audio_feature_extractor = AutoFeatureExtractor.from_pretrained('team-lucid/hubert-base-korean')
+    audio_feature_extractor.return_attention_mask=True
+    test_audios,_=librosa.load(file_path, sr=16000)
+    test_ds = MyDataset([test_audios], audio_feature_extractor)
+    # 데이터셋 로드해 배치 단위로 처리
+    test_dl = DataLoader(test_ds, batch_size=16, collate_fn=collate_fn)
+    # 예측 수행
+    final_pred = trainer.predict(pretrained_model, test_dl)
+    if final_pred[0].item()==1:
+        result['emotion']='5' #fear
+    else:
+        result['emotion']='0' #not fear
 
 
 
@@ -765,11 +724,6 @@ def predict_feedback(paragraph):
 
 def analyze_sentence(sentence):
 
-    # 예시 문장
-    #example_paragraph = """
-    #청각장애인을 위한 수어 생성 프로젝트가 가장 인상 깊었습니다. 한국어를 인식해서 수어로 변환하는 모델이었는데 청각장애인의 생활 환경을 개선할 수 있는 부분이 정말 인상 깊었습니다.
-    #"""
-
     # 예측 및 피드백 생성
     scores, feedback = predict_feedback(sentence)
 
@@ -783,5 +737,3 @@ def analyze_sentence(sentence):
         'con_feed' : feedback[2]
     }
     return Score
-    #print(f"예측된 점수:\n표현: {scores[0]:.2f}, 구성: {scores[1]:.2f}, 내용: {scores[2]:.2f}")
-    #print(f"피드백:\n{feedback}")
